@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>overgrown.band</title>
 
-  <link rel="preload" href="Open.mp3" as="audio">
   <link rel="preload" href="video.mp4" as="video">
   <link rel="preload" href="TOUR DATES.png" as="image">
   <link rel="preload" href="TOUR DATES 2.png" as="image">
@@ -168,7 +167,6 @@
       display: block;
     }
 
-    /* Scoped logo TV styles */
     .logo-scene {
       position: relative;
       width: 100%;
@@ -500,10 +498,6 @@
     </div>
   </div>
 
-  <audio id="logoOpenSfx" preload="auto" playsinline webkit-playsinline>
-    <source src="Open.mp3" type="audio/mpeg">
-  </audio>
-
   <script>
     const site = document.getElementById('site');
     const hitboxes = [...document.querySelectorAll('.hitbox')];
@@ -576,11 +570,9 @@
     window.addEventListener('resize', hideOverlay);
     window.addEventListener('scroll', hideOverlay);
 
-    // Scoped logo TV script
     const logoWrap = document.getElementById('logoWrap');
     const logoVid = document.getElementById('logoVid');
     const logoTv = document.getElementById('logoTv');
-    const logoOpenSfx = document.getElementById('logoOpenSfx');
     const logoRgb = document.getElementById('logoRgb');
     const logoRgbCtx = logoRgb.getContext('2d', { alpha: false });
     const logoFx = document.getElementById('logoFx');
@@ -610,7 +602,7 @@
     window.addEventListener('resize', logoResize);
     new ResizeObserver(logoResize).observe(logoWrap);
     logoResize();
-    logoOpenSfx.load();
+    logoVid.load();
 
     let logoCaBase = 2.0;
     let logoCaWobble = 1.2;
@@ -622,11 +614,8 @@
     let logoPulseFrames = 0;
     let logoJitterHold = 0;
     let logoJitterY = 0;
-    let logoStarted = false;
     let logoAnimationStarted = false;
     let logoStartRequested = false;
-    let logoAudioUnlocked = false;
-    let logoAudioStarted = false;
 
     function logoCoverDraw(vw, vh, w, h) {
       return { dx: 0, dy: 0, dw: w, dh: h };
@@ -779,73 +768,36 @@
 
       logoTv.classList.add('risen');
 
-      logoVid.muted = false;
-      logoVid.currentTime = 0;
-      Promise.resolve(logoVid.play()).catch((err) => {
-        console.warn('Video playback failed:', err);
-      });
-
-      requestAnimationFrame(logoTick);
-    }
-
-    async function unlockLogoAudio() {
-      if (logoAudioUnlocked) return true;
-
-      try {
-        logoOpenSfx.muted = true;
-        logoOpenSfx.volume = 0;
-        logoOpenSfx.currentTime = 0;
-
-        await logoOpenSfx.play();
-        logoOpenSfx.pause();
-
-        logoOpenSfx.currentTime = 0;
-        logoOpenSfx.muted = false;
-        logoOpenSfx.volume = 1;
-
-        logoAudioUnlocked = true;
-        return true;
-      } catch (err) {
-        console.warn('Audio unlock failed:', err);
-        return false;
-      }
-    }
-
-    async function startLogoPlayback() {
-      if (logoStartRequested) return;
-      logoStartRequested = true;
-      logoStarted = true;
-
-      logoResize();
-
-      const unlocked = await unlockLogoAudio();
-
-      const startAnimationOnce = () => {
-        if (!logoAudioStarted) {
-          logoAudioStarted = true;
-          beginLogoAnimation();
-        }
+      const startTickOnce = () => {
+        requestAnimationFrame(logoTick);
       };
 
-      try {
-        logoOpenSfx.pause();
-        logoOpenSfx.currentTime = 0;
-        logoOpenSfx.muted = false;
-        logoOpenSfx.volume = 1;
+      logoVid.currentTime = 0;
+      logoVid.playsInline = true;
+      logoVid.muted = false;
 
-        if (unlocked) {
-          logoOpenSfx.addEventListener('playing', startAnimationOnce, { once: true });
-          await logoOpenSfx.play();
+      Promise.resolve(logoVid.play())
+        .then(() => {
+          startTickOnce();
+        })
+        .catch((err) => {
+          console.warn('Video playback failed:', err);
+        });
+    }
 
-          setTimeout(() => {
-            startAnimationOnce();
-          }, 60);
-        } else {
-          startAnimationOnce();
-        }
-      } catch (err) {
-        console.warn('Open sound playback failed:', err);
-        startAnimationOnce();
+    function startLogoPlayback() {
+      if (logoStartRequested) return;
+      logoStartRequested = true;
+
+      const startWhenReady = () => {
+        beginLogoAnimation();
+      };
+
+      if (logoVid.readyState >= 2) {
+        startWhenReady();
+      } else {
+        logoVid.load();
+        logoVid.addEventListener('canplay', startWhenReady, { once: true });
       }
     }
 
@@ -854,9 +806,8 @@
       startLogoPlayback();
     }
 
-    logoTv.addEventListener('pointerdown', handleLogoPress, { passive: false });
-    logoTv.addEventListener('touchstart', handleLogoPress, { passive: false });
     logoTv.addEventListener('click', handleLogoPress, { passive: false });
+    logoTv.addEventListener('touchend', handleLogoPress, { passive: false });
   </script>
 </body>
 </html>
