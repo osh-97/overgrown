@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>overgrown.band</title>
+
+  <link rel="preload" href="Open.mp3" as="audio">
+  <link rel="preload" href="video.mp4" as="video">
+  <link rel="preload" href="TOUR DATES.png" as="image">
+  <link rel="preload" href="TOUR DATES 2.png" as="image">
+  <link rel="preload" href="COVER ART.png" as="image">
+  <link rel="preload" href="tracklist.png" as="image">
+  <link rel="preload" href="FRAME.png" as="image">
+  <link rel="preload" href="LOGO.png" as="image">
+
   <style>
     :root {
       --bg: #000;
@@ -36,6 +46,12 @@
       aspect-ratio: 16 / 9;
       background: #000;
       overflow: hidden;
+      opacity: 0;
+      transition: opacity 180ms ease;
+    }
+
+    .site.is-ready {
+      opacity: 1;
     }
 
     .tour-stage {
@@ -438,20 +454,20 @@
 
           <div class="logo-frame-under-mask">
             <div class="logo-frame-under-wrap" id="logoFrameUnderWrap">
-              <img class="logo-frame-under" id="logoFrameUnder" src="LOGO.png" alt="Secondary frame layer" />
+              <img class="logo-frame-under" id="logoFrameUnder" src="LOGO.png" alt="Secondary frame layer" loading="eager" decoding="async" />
             </div>
           </div>
 
-          <img class="logo-frame" src="FRAME.png" alt="Oval TV frame overlay" />
+          <img class="logo-frame" src="FRAME.png" alt="Oval TV frame overlay" loading="eager" decoding="async" />
         </div>
       </div>
     </div>
 
-    <div class="center-album"><img src="COVER ART.png" alt="COVER ART" /></div>
-    <div class="center-tracklist"><img src="tracklist.png" alt="Tracklist and credits" /></div>
+    <div class="center-album"><img src="COVER ART.png" alt="COVER ART" loading="eager" decoding="async" /></div>
+    <div class="center-tracklist"><img src="tracklist.png" alt="Tracklist and credits" loading="eager" decoding="async" /></div>
 
     <div class="tour-stage left" id="leftStage">
-      <img class="base-image" src="TOUR DATES.png" alt="APRIL TOUR DATES" />
+      <img class="base-image" src="TOUR DATES.png" alt="APRIL TOUR DATES" loading="eager" decoding="async" />
 
       <button class="hitbox" style="left:2.9%; width:82.8%; top:15%; height:5.4%;" data-overlay-src="CARDIFF.png" data-overlay-left="2.5%" data-overlay-top="5%" data-overlay-width="85%" data-overlay-height="26%" data-url="https://slamdunkmusic.seetickets.com/event/mouth-culture/clwb-ifor-bach/3562011" aria-label="APR 02 Cardiff, CLWB IFOR BACH"></button>
       <button class="hitbox" style="left:2.9%; width:82.8%; top:20%; height:5.4%;" data-overlay-src="EXETER.png" data-overlay-left="3%" data-overlay-top="18%" data-overlay-width="100%" data-overlay-height="10%" data-url="https://slamdunkmusic.seetickets.com/event/mouth-culture/exeter-cavern/3562019" aria-label="APR 03 Exeter, The Cavern"></button>
@@ -468,7 +484,7 @@
     </div>
 
     <div class="tour-stage right" id="rightStage">
-      <img class="base-image" src="TOUR DATES 2.png" alt="MAY-JULY TOUR DATES" />
+      <img class="base-image" src="TOUR DATES 2.png" alt="MAY-JULY TOUR DATES" loading="eager" decoding="async" />
 
       <button class="hitbox" style="left:4.5%; width:86.5%; top:11%; height:6.2%;" data-overlay-src="LEEDS.png" data-overlay-left="0%" data-overlay-top="0%" data-overlay-width="70%" data-overlay-height="15%" data-url="https://futuresound.seetickets.com/event/gold-sounds-2026/brudenell-social-club/3598703" aria-label="MAY 05 Leeds, Gold Sounds Festival"></button>
       <button class="hitbox" style="left:4.5%; width:86.5%; top:17%; height:6.2%;" data-overlay-src="BRIGHTON 2.png" data-overlay-left="10%" data-overlay-top="16%" data-overlay-width="80%" data-overlay-height="10%" data-url="https://www.ticketmaster.co.uk/the-great-escape-festival-2026-brighton-13-05-2026/event/1F0062A9A2AD11BF" aria-label="MAY 13 Brighton, Great Escape Festival"></button>
@@ -492,6 +508,32 @@
     const site = document.getElementById('site');
     const hitboxes = [...document.querySelectorAll('.hitbox')];
     const globalOverlay = document.getElementById('globalOverlay');
+
+    const criticalImages = [
+      'TOUR DATES.png',
+      'TOUR DATES 2.png',
+      'COVER ART.png',
+      'tracklist.png',
+      'FRAME.png',
+      'LOGO.png'
+    ];
+
+    function preloadImage(src) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.decoding = 'async';
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = src;
+      });
+    }
+
+    async function prepareSite() {
+      await Promise.all(criticalImages.map(preloadImage));
+      site.classList.add('is-ready');
+    }
+
+    prepareSite();
 
     const hideOverlay = () => {
       globalOverlay.classList.remove('visible');
@@ -582,7 +624,9 @@
     let logoJitterY = 0;
     let logoStarted = false;
     let logoAnimationStarted = false;
+    let logoStartRequested = false;
     let logoAudioUnlocked = false;
+    let logoAudioStarted = false;
 
     function logoCoverDraw(vw, vh, w, h) {
       return { dx: 0, dy: 0, dw: w, dh: h };
@@ -745,54 +789,74 @@
     }
 
     async function unlockLogoAudio() {
-      if (logoAudioUnlocked) return;
+      if (logoAudioUnlocked) return true;
+
       try {
         logoOpenSfx.muted = true;
+        logoOpenSfx.volume = 0;
         logoOpenSfx.currentTime = 0;
+
         await logoOpenSfx.play();
         logoOpenSfx.pause();
+
         logoOpenSfx.currentTime = 0;
         logoOpenSfx.muted = false;
+        logoOpenSfx.volume = 1;
+
         logoAudioUnlocked = true;
+        return true;
       } catch (err) {
         console.warn('Audio unlock failed:', err);
+        return false;
       }
     }
 
-    function startLogoPlayback() {
-      if (logoStarted) return;
+    async function startLogoPlayback() {
+      if (logoStartRequested) return;
+      logoStartRequested = true;
       logoStarted = true;
 
       logoResize();
-      logoOpenSfx.currentTime = 0;
 
-      const startOnce = () => {
-        beginLogoAnimation();
+      const unlocked = await unlockLogoAudio();
+
+      const startAnimationOnce = () => {
+        if (!logoAudioStarted) {
+          logoAudioStarted = true;
+          beginLogoAnimation();
+        }
       };
 
-      logoOpenSfx.addEventListener('playing', startOnce, { once: true });
+      try {
+        logoOpenSfx.pause();
+        logoOpenSfx.currentTime = 0;
+        logoOpenSfx.muted = false;
+        logoOpenSfx.volume = 1;
 
-      Promise.resolve(logoOpenSfx.play())
-        .then(() => {
-          setTimeout(startOnce, 0);
-        })
-        .catch((err) => {
-          console.warn('Open sound playback failed:', err);
-          startOnce();
-        });
+        if (unlocked) {
+          logoOpenSfx.addEventListener('playing', startAnimationOnce, { once: true });
+          await logoOpenSfx.play();
+
+          setTimeout(() => {
+            startAnimationOnce();
+          }, 60);
+        } else {
+          startAnimationOnce();
+        }
+      } catch (err) {
+        console.warn('Open sound playback failed:', err);
+        startAnimationOnce();
+      }
     }
 
-    const handleLogoPress = async (event) => {
+    function handleLogoPress(event) {
       event.preventDefault();
-      if (!logoAudioUnlocked) {
-        await unlockLogoAudio();
-      }
       startLogoPlayback();
-    };
+    }
 
-    logoTv.addEventListener('pointerup', handleLogoPress);
-    logoTv.addEventListener('click', handleLogoPress);
-    logoTv.addEventListener('touchend', handleLogoPress, { passive: false });
+    logoTv.addEventListener('pointerdown', handleLogoPress, { passive: false });
+    logoTv.addEventListener('touchstart', handleLogoPress, { passive: false });
+    logoTv.addEventListener('click', handleLogoPress, { passive: false });
   </script>
 </body>
 </html>
