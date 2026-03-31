@@ -167,6 +167,8 @@
       aspect-ratio: 2048 / 1172;
       filter: drop-shadow(0 18px 36px rgba(0,0,0,0.55));
       cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .logo-screen {
@@ -482,7 +484,7 @@
     </div>
   </div>
 
-  <audio id="logoOpenSfx" preload="auto">
+  <audio id="logoOpenSfx" preload="auto" playsinline webkit-playsinline>
     <source src="Open.mp3" type="audio/mpeg">
   </audio>
 
@@ -580,6 +582,7 @@
     let logoJitterY = 0;
     let logoStarted = false;
     let logoAnimationStarted = false;
+    let logoAudioUnlocked = false;
 
     function logoCoverDraw(vw, vh, w, h) {
       return { dx: 0, dy: 0, dw: w, dh: h };
@@ -741,6 +744,21 @@
       requestAnimationFrame(logoTick);
     }
 
+    async function unlockLogoAudio() {
+      if (logoAudioUnlocked) return;
+      try {
+        logoOpenSfx.muted = true;
+        logoOpenSfx.currentTime = 0;
+        await logoOpenSfx.play();
+        logoOpenSfx.pause();
+        logoOpenSfx.currentTime = 0;
+        logoOpenSfx.muted = false;
+        logoAudioUnlocked = true;
+      } catch (err) {
+        console.warn('Audio unlock failed:', err);
+      }
+    }
+
     function startLogoPlayback() {
       if (logoStarted) return;
       logoStarted = true;
@@ -764,9 +782,17 @@
         });
     }
 
-    logoTv.addEventListener('click', () => {
+    const handleLogoPress = async (event) => {
+      event.preventDefault();
+      if (!logoAudioUnlocked) {
+        await unlockLogoAudio();
+      }
       startLogoPlayback();
-    });
+    };
+
+    logoTv.addEventListener('pointerup', handleLogoPress);
+    logoTv.addEventListener('click', handleLogoPress);
+    logoTv.addEventListener('touchend', handleLogoPress, { passive: false });
   </script>
 </body>
 </html>
