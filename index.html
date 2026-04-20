@@ -1,6 +1,22 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <script>
+    const isLocal =
+      location.hostname === 'localhost' ||
+      location.hostname === '127.0.0.1';
+
+    if (!isLocal && location.protocol !== 'https:') {
+      location.replace(
+        'https://' +
+        location.host +
+        location.pathname +
+        location.search +
+        location.hash
+      );
+    }
+  </script>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>overgrown.band</title>
@@ -19,6 +35,7 @@
       --fg: #f4f1e8;
       --logo-pulse: 0;
       --logo-jitterY: 0px;
+      --legal-width: 520px;
     }
 
     * { box-sizing: border-box; }
@@ -399,7 +416,7 @@
       }
 
       .center-logo {
-        width: min(70vw, 420px);
+        width: min(100%, var(--legal-width));
         margin-top: 20px;
       }
 
